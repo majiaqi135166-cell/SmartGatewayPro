@@ -5,7 +5,7 @@
 #include "TemperatureSensor.hpp"
 #include "HardwareController.hpp"
 #include "NetworkManager.hpp"
-
+#include "Logger.hpp"
 std::atomic<bool> g_keep_running(true);
 
 void receive_task(NetworkManager* net, HardwareController* controller) {
@@ -31,8 +31,10 @@ int main() {
     ConfigReader config("gateway.conf");
     TemperatureSensor sensor(config.getString("TEMP_PATH"));
     HardwareController controller(config.getString("LED_PATH"), config.getFloat("THRESHOLD"));
-    NetworkManager network(config.getString("SERVER_IP"), (int)config.getFloat("SERVER_PORT"));
-
+    NetworkManager network(
+    config.getString("SERVER_IP", "127.0.0.1"), 
+    (int)config.getFloat("SERVER_PORT", 8888.0f)
+);
     std::thread recv_thread(receive_task, &network, &controller);
     auto last_reconnect = std::chrono::steady_clock::now();
     bool connected = false;
@@ -54,6 +56,8 @@ int main() {
                 connected = false;
             }
         }
+// 找到这一行
+        Logger::getInstance().log("INFO", "Loop completed once. Connected status: " + std::to_string(connected)); 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     recv_thread.join();
